@@ -17,7 +17,7 @@ FILE_TRACKER = 'http://localhost:8000'
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Backend is running ..."}
 
 
 @app.get('/create-file')
@@ -38,7 +38,7 @@ async def create_file(filename):
 
 @app.get('/open-file')
 async def open_file(filename):
-    response = requests.get(FILE_TRACKER + '/open?file_id=' + str(filename))
+    response = requests.get(FILE_TRACKER + '/open/?file_id=' + str(filename))
     print("open_file", response.json())
     return response.json()
     # response contains IP, port to fetch file
@@ -46,7 +46,13 @@ async def open_file(filename):
 
 @app.get('/close-file')
 async def close_file(filename):
-    response = requests.get(FILE_TRACKER + '/close?file_id=' + str(filename))
+    params = {
+        "file_id": str(filename),
+        "user_id": 123,
+        "ip": "127.0.0.1",
+        "port": 1234
+    }
+    response = requests.post(FILE_TRACKER + '/close/', data=params)
     print("close_file", response.json())
     return response.json()
 
