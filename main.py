@@ -91,11 +91,11 @@ async def close_file(filename):
 
 @app.get('/fetch-file')  # reload file from disk/mem
 async def fetch_file(filename):
-    contents = open(WORKDIR + str(filename), "r").read()
+    contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
     # print("fetch_file", filename)
     resp = {
         "name": str(filename),
-        "content": str(contents)
+        "content": contents
     }
     print("fetch_file", resp)
     return resp
@@ -110,6 +110,59 @@ async def edit_file(filename, idx, char, type, timestamp):
         - submit edit to RabbitMQ
     """
     pass
+
+@app.get('/add-char')
+async def add_char(filename, line, pos, key):
+    line = int(line)
+    pos = int(pos)
+    contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
+    ln = contents[line]
+    contents[line] = ln[:pos] + key + ln[pos:]
+    resp = {
+        "name": str(filename),
+        "content": contents
+    }
+    open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
+    return resp
+
+@app.get('/delete-char')
+async def delete_char(filename, line, pos):
+    line = int(line)
+    pos = int(pos)
+    contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
+    ln = contents[line]
+    contents[line] = ln[:pos] + ln[pos + 1:]
+    resp = {
+        "name": str(filename),
+        "content": contents
+    }
+    open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
+    return resp
+
+@app.get('/add-line')
+async def add_line(filename, line):
+    line = int(line)
+    contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
+    contents = contents[:line] + [""] + contents[line:]
+    
+    resp = {
+        "name": str(filename),
+        "content": contents
+    }
+    open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
+    return resp
+
+@app.get('/delete-line')
+async def delete_line(filename, line):
+    line = int(line)
+    contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
+    contents = contents[:line] + contents[line+1:]
+    resp = {
+        "name": str(filename),
+        "content": contents
+    }
+    open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
+    return resp
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host=MY_IP, port=MY_PORT,
