@@ -21,7 +21,10 @@ MY_IP = '127.0.0.1'  # set to private ip if collaborating over LAN
 MY_PORT = int(sys.argv[1])
 MY_USERID = 123
 ######################
-
+file_cursors = {
+    'hello': 0,
+    'file2': 0
+}
 
 @app.get("/")
 async def root():
@@ -100,16 +103,24 @@ async def fetch_file(filename):
     print("fetch_file", resp)
     return resp
 
-
-@app.get('/edit-file')
-async def edit_file(filename, idx, char, type, timestamp):
-    """
-        - type='insert' or 'delete'
-        - calculate crdt index using 'idx' and 'timestamp'
-        - apply edit to local copy
-        - submit edit to RabbitMQ
-    """
+def move_cursor(key):
     pass
+def insert_char(key):
+    pass
+def delete_char(key):
+    pass
+
+@app.get('/key-press')
+async def key_press(filename, key):
+    if key == 'ArrowRight' or key == 'ArrowLeft' or key == 'ArrowUp' or key == 'ArrowDown':
+        move_cursor(key)
+    elif key == 'Enter':
+        insert_char('\n')
+    elif len(key) == 1:
+        insert_char(key)
+    elif key == 'Backspace':
+        delete_char()
+    return fetch_file(filename)
 
 @app.get('/add-char')
 async def add_char(filename, line, pos, key):
