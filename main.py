@@ -2,6 +2,7 @@ import requests
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from mahitahi.mahitahi import Doc
 import sys
 
 app = FastAPI()
@@ -25,6 +26,28 @@ file_cursors = {
     'hello': 0,
     'file2': 0
 }
+
+crdt_file = {
+    'hello': Doc(),
+    'file2': Doc()
+}
+
+def create_CRDT_Embeddings(content, doc_file):
+    # create logoot/CRDT embeddings
+    pos = 0
+    for line in content:
+        # add embedding
+        for c in line:
+            doc_file.insert(pos, c)
+            pos += 1
+        
+        doc_file.insert(pos, '\n')
+        pos += 1
+
+# create_CRDT_Embeddings(\
+#     list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + 'hello', "r").readlines())), \
+#          crdt_file['hello'], )
+
 
 @app.get("/")
 async def root():
@@ -65,7 +88,13 @@ async def open_file(filename):
     resp = requests.get(
         f'http://{ip}:{port}/fetch-file?filename={filename}').json()
 
-    if ('content' in resp) and ('name' in resp) and (resp['name'] == filename):
+    if ('content' in resp) and ('name' in resp) and (resp['name'] == filename):     
+        # File successfully opened
+
+        crdt_file[filename].site = MY_USERID
+
+        create_CRDT_Embeddings(resp['content'], crdt_file[filename])
+
         params = {
             "file_id": str(filename),
             "user_id": MY_USERID,
@@ -94,20 +123,24 @@ async def close_file(filename):
 
 @app.get('/fetch-file')  # reload file from disk/mem
 async def fetch_file(filename):
-    contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
+    # contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
     # print("fetch_file", filename)
+    contents = crdt_file[filename].text
     resp = {
         "name": str(filename),
-        "content": contents
+        "content": contents,
+        "cursor": file_cursors[filename]
     }
     print("fetch_file", resp)
     return resp
 
 def move_cursor(key):
     pass
-def insert_char(key):
+
+def insert_char(filename, key):
     pass
-def delete_char(key):
+
+def delete_char(filename, key):
     pass
 
 @app.get('/key-press')
@@ -122,58 +155,94 @@ async def key_press(filename, key):
         delete_char()
     return fetch_file(filename)
 
-@app.get('/add-char')
-async def add_char(filename, line, pos, key):
-    line = int(line)
-    pos = int(pos)
-    contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
-    ln = contents[line]
-    contents[line] = ln[:pos] + key + ln[pos:]
-    resp = {
-        "name": str(filename),
-        "content": contents
-    }
-    open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-    return resp
-
-@app.get('/delete-char')
-async def delete_char(filename, line, pos):
-    line = int(line)
-    pos = int(pos)
-    contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
-    ln = contents[line]
-    contents[line] = ln[:pos] + ln[pos + 1:]
-    resp = {
-        "name": str(filename),
-        "content": contents
-    }
-    open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-    return resp
-
-@app.get('/add-line')
-async def add_line(filename, line):
-    line = int(line)
-    contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
-    contents = contents[:line] + [""] + contents[line:]
+# @app.get('/add-char')
+# async def add_char(filename, line, pos, key):
+#     line = int(line)
+#     pos = int(pos)
+#     contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
+#     ln = contents[line]
+#     contents[line] = ln[:pos] + key + ln[pos:]
+#     resp = {
+#         "name": str(filename),
+#         "content": contents
+#     }
+#     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
     
-    resp = {
-        "name": str(filename),
-        "content": contents
-    }
-    open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-    return resp
+#     # update CRDT embedding
+#     cur_index = 0
+#     for i in range(line):
+#         cur_index += character_counter[filename][i]
+    
+#     cur_index += pos
+#     print(cur_index)
 
-@app.get('/delete-line')
-async def delete_line(filename, line):
-    line = int(line)
-    contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
-    contents = contents[:line] + contents[line+1:]
-    resp = {
-        "name": str(filename),
-        "content": contents
-    }
-    open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-    return resp
+#     add_msg = crdt_file[filename].insert(cur_index, key)
+#     character_counter[filename][line] += 1
+
+#     # send add_msg to rabbitMQ
+#     print(add_msg)
+#     print(crdt_file[filename].text)
+
+#     return resp
+
+# @app.get('/delete-char')
+# async def delete_char(filename, line, pos):
+#     line = int(line)
+#     pos = int(pos)
+#     contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
+#     ln = contents[line]
+#     contents[line] = ln[:pos] + ln[pos + 1:]
+#     resp = {
+#         "name": str(filename),
+#         "content": contents
+#     }
+#     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
+    
+#     # update CRDT embedding
+#     cur_index = 0
+#     for i in range(line):
+#         cur_index += character_counter[filename][i]
+    
+#     cur_index += pos
+
+#     add_msg = crdt_file[filename].delete(cur_index)
+#     character_counter[filename][line] -= 1
+
+#     # send add_msg to rabbitMQ
+#     print(add_msg)
+#     print(crdt_file[filename].text)
+    
+#     return resp
+
+# @app.get('/add-line')
+# async def add_line(filename, line):
+#     line = int(line)
+#     contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
+#     contents = contents[:line] + [""] + contents[line:]
+    
+#     resp = {
+#         "name": str(filename),
+#         "content": contents
+#     }
+#     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
+    
+
+    
+#     return resp
+
+# @app.get('/delete-line')
+# async def delete_line(filename, line):
+#     line = int(line)
+#     contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
+#     contents = contents[:line] + contents[line+1:]
+#     resp = {
+#         "name": str(filename),
+#         "content": contents
+#     }
+#     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
+#     return resp
+
+# TODO: Get updates from RabbitMQ and make appropriate changes to the local file.
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host=MY_IP, port=MY_PORT,

@@ -97,7 +97,6 @@ def convertFileToPositionalEmbeddings(filePath, site):
             c = in_file.read(1)
             if not c:
                 break
-            print(pos)
             crdt_doc.insert(pos, c)
             pos += 1
         
@@ -105,4 +104,7 @@ def convertFileToPositionalEmbeddings(filePath, site):
 
 doc = convertFileToPositionalEmbeddings("./workdir/newfile", 0)
 
+print(doc.insert(5, '%'))
+
 doc.debug()
+print(doc.text)
