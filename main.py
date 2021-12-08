@@ -103,8 +103,16 @@ async def fetch_file(filename):
     print("fetch_file", resp)
     return resp
 
-def move_cursor(key):
-    pass
+def move_cursor(filename, key):
+    if key == 'ArrowRight':
+        file_cursors[filename] = file_cursors[filename] + 1
+    elif key == 'ArrowLeft':
+        file_cursors[filename] += max(0, file_cursors[filename] - 1)
+    elif key == 'ArrowUp':
+        pass # TODO
+    elif key == 'ArrowDown':
+        pass # TODO
+
 def insert_char(key):
     pass
 def delete_char(key):
@@ -113,7 +121,7 @@ def delete_char(key):
 @app.get('/key-press')
 async def key_press(filename, key):
     if key == 'ArrowRight' or key == 'ArrowLeft' or key == 'ArrowUp' or key == 'ArrowDown':
-        move_cursor(key)
+        move_cursor(filename, key)
     elif key == 'Enter':
         insert_char('\n')
     elif len(key) == 1:
