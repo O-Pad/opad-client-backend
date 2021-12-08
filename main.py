@@ -44,9 +44,7 @@ def create_CRDT_Embeddings(content, doc_file):
         doc_file.insert(pos, '\n')
         pos += 1
 
-# create_CRDT_Embeddings(\
-#     list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + 'hello', "r").readlines())), \
-#          crdt_file['hello'], )
+create_CRDT_Embeddings( open(WORKDIR + 'hello', "r").read(), crdt_file['hello'] )
 
 
 @app.get("/")
@@ -144,11 +142,17 @@ def move_cursor(filename, key):
     elif key == 'ArrowDown':
         pass # TODO
 
-def insert_char(key):
-    pass
+def insert_char(filename, key):
+    crdt_file[filename].insert(file_cursors[filename], key)
+    file_cursors[filename] += 1
 
 def delete_char(filename, key):
-    pass
+    if file_cursors[filename] == 0:
+        # first index of file
+        return
+
+    crdt_file[filename].delete(file_cursors[filename] - 1)
+    file_cursors[filename] -= 1
 
 @app.get('/key-press')
 async def key_press(filename, key):
