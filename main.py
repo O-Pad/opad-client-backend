@@ -140,11 +140,17 @@ def move_cursor(filename, key):
     elif key == 'ArrowDown':
         pass # TODO
 
-def insert_char(key):
-    pass
+def insert_char(filename, key):
+    crdt_file[filename].insert(file_cursors[filename], key)
+    file_cursors[filename] += 1
 
 def delete_char(filename, key):
-    pass
+    if file_cursors[filename] == 0:
+        # first index of file
+        return
+
+    crdt_file[filename].delete(file_cursors[filename] - 1)
+    file_cursors[filename] -= 1
 
 @app.get('/key-press')
 async def key_press(filename, key):
