@@ -144,7 +144,7 @@ def insert_char(filename, key):
     crdt_file[filename].insert(file_cursors[filename], key)
     file_cursors[filename] += 1
 
-def delete_char(filename, key):
+def delete_char(filename):
     if file_cursors[filename] == 0:
         # first index of file
         return
@@ -157,11 +157,13 @@ async def key_press(filename, key):
     if key == 'ArrowRight' or key == 'ArrowLeft' or key == 'ArrowUp' or key == 'ArrowDown':
         move_cursor(filename, key)
     elif key == 'Enter':
-        insert_char('\n')
+        insert_char(filename, '\n')
+    elif key == 'Space':
+        insert_char(filename, ' ')
     elif len(key) == 1:
-        insert_char(key)
+        insert_char(filename, key)
     elif key == 'Backspace':
-        delete_char()
+        delete_char(filename)
     return fetch_file(filename)
 
 # @app.get('/add-char')
