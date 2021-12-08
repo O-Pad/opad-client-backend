@@ -44,9 +44,7 @@ def create_CRDT_Embeddings(content, doc_file):
         doc_file.insert(pos, '\n')
         pos += 1
 
-# create_CRDT_Embeddings(\
-#     list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + 'hello', "r").readlines())), \
-#          crdt_file['hello'], )
+create_CRDT_Embeddings( open(WORKDIR + 'hello', "r").readlines(), crdt_file['hello'] )
 
 
 @app.get("/")
@@ -122,9 +120,7 @@ async def close_file(filename):
 
 
 @app.get('/fetch-file')  # reload file from disk/mem
-async def fetch_file(filename):
-    # contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
-    # print("fetch_file", filename)
+def fetch_file(filename):
     contents = crdt_file[filename].text
     resp = {
         "name": str(filename),
@@ -138,7 +134,7 @@ def move_cursor(filename, key):
     if key == 'ArrowRight':
         file_cursors[filename] = file_cursors[filename] + 1
     elif key == 'ArrowLeft':
-        file_cursors[filename] += max(0, file_cursors[filename] - 1)
+        file_cursors[filename] = max(0, file_cursors[filename] - 1)
     elif key == 'ArrowUp':
         pass # TODO
     elif key == 'ArrowDown':
