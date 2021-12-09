@@ -4,6 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mahitahi.mahitahi import Doc
 import sys
+from rabbitmq import rabbitmq_listen
+from multiprocessing import Process
+import pika
+import json
 
 app = FastAPI()
 
@@ -32,6 +36,9 @@ crdt_file = {
     'file2': Doc()
 }
 
+rabbitmq_listeners = {}
+
+
 def create_CRDT_Embeddings(content, doc_file):
     # create logoot/CRDT embeddings
     pos = 0
@@ -40,11 +47,13 @@ def create_CRDT_Embeddings(content, doc_file):
         for c in line:
             doc_file.insert(pos, c)
             pos += 1
-        
+
         doc_file.insert(pos, '\n')
         pos += 1
 
-create_CRDT_Embeddings( open(WORKDIR + 'hello', "r").readlines(), crdt_file['hello'] )
+
+create_CRDT_Embeddings(
+    open(WORKDIR + 'hello', "r").readlines(), crdt_file['hello'])
 
 
 @app.get("/")
@@ -72,6 +81,12 @@ async def create_file(filename):
     f.write("# Start Collaborating! ...")
     f.close()
     print("create_file", response.json())
+
+    # spawn rabbitmq listener
+    rabbitmq_listeners[filename] = Process(
+        target=rabbitmq_listen, args=(filename, MY_PORT, ))
+    rabbitmq_listeners[filename].start()
+
     return response.json()
 
 
@@ -81,13 +96,19 @@ async def open_file(filename):
     resp = response.json()
     print("open_file", resp)
 
+    # make sure actually opened
+
     ip = resp['ip']
     port = resp['port']
     resp = requests.get(
         f'http://{ip}:{port}/fetch-file?filename={filename}').json()
 
-    if ('content' in resp) and ('name' in resp) and (resp['name'] == filename):     
+    if ('content' in resp) and ('name' in resp) and (resp['name'] == filename):
         # File successfully opened
+
+        rabbitmq_listeners[filename] = Process(
+            target=rabbitmq_listen, args=(filename, MY_PORT, ))
+        rabbitmq_listeners[filename].start()
 
         crdt_file[filename].site = MY_USERID
 
@@ -115,6 +136,9 @@ async def close_file(filename):
         "port": MY_PORT
     }
     response = requests.post(FILE_TRACKER + '/close/', data=params)
+
+    rabbitmq_listeners[filename].terminate()
+
     print("close_file", response.json())
     return response.json()
 
@@ -130,27 +154,57 @@ def fetch_file(filename):
     print("fetch_file", resp)
     return resp
 
+
 def move_cursor(filename, key):
     if key == 'ArrowRight':
         file_cursors[filename] = file_cursors[filename] + 1
     elif key == 'ArrowLeft':
         file_cursors[filename] = max(0, file_cursors[filename] - 1)
     elif key == 'ArrowUp':
-        pass # TODO
+        pass  # TODO
     elif key == 'ArrowDown':
-        pass # TODO
+        pass  # TODO
+
+
+@app.get('/patch-from-rabbitmq')
+def receive_patch(filename, patch):
+    print(filename, patch)
+    crdt_file[filename].apply_patch(str(patch))
+
+
+def send_patch(filename, patch):
+    # send this patch to rabbitmq
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host='localhost'))
+    channel = connection.channel()
+    msg = {
+        "filename": filename,
+        "patch": patch
+    }
+    print(msg)
+    channel.basic_publish(
+        exchange=filename, routing_key='', body=json.dumps(msg))
+
 
 def insert_char(filename, key):
-    crdt_file[filename].insert(file_cursors[filename], key)
+    insert_patch = crdt_file[filename].insert(file_cursors[filename], key)
     file_cursors[filename] += 1
+    open(WORKDIR + str(filename), "w").write(crdt_file[filename].text)
+
+    send_patch(filename, insert_patch)
+
 
 def delete_char(filename):
     if file_cursors[filename] == 0:
         # first index of file
         return
 
-    crdt_file[filename].delete(file_cursors[filename] - 1)
+    delete_patch = crdt_file[filename].delete(file_cursors[filename] - 1)
     file_cursors[filename] -= 1
+    open(WORKDIR + str(filename), "w").write(crdt_file[filename].text)
+
+    send_patch(filename, delete_patch)
+
 
 @app.get('/key-press')
 async def key_press(filename, key):
@@ -178,12 +232,12 @@ async def key_press(filename, key):
 #         "content": contents
 #     }
 #     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-    
+
 #     # update CRDT embedding
 #     cur_index = 0
 #     for i in range(line):
 #         cur_index += character_counter[filename][i]
-    
+
 #     cur_index += pos
 #     print(cur_index)
 
@@ -208,12 +262,12 @@ async def key_press(filename, key):
 #         "content": contents
 #     }
 #     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-    
+
 #     # update CRDT embedding
 #     cur_index = 0
 #     for i in range(line):
 #         cur_index += character_counter[filename][i]
-    
+
 #     cur_index += pos
 
 #     add_msg = crdt_file[filename].delete(cur_index)
@@ -222,7 +276,7 @@ async def key_press(filename, key):
 #     # send add_msg to rabbitMQ
 #     print(add_msg)
 #     print(crdt_file[filename].text)
-    
+
 #     return resp
 
 # @app.get('/add-line')
@@ -230,15 +284,14 @@ async def key_press(filename, key):
 #     line = int(line)
 #     contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
 #     contents = contents[:line] + [""] + contents[line:]
-    
+
 #     resp = {
 #         "name": str(filename),
 #         "content": contents
 #     }
 #     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-    
 
-    
+
 #     return resp
 
 # @app.get('/delete-line')
