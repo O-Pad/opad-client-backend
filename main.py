@@ -32,6 +32,7 @@ crdt_file = {
     'file2': Doc()
 }
 
+
 def create_CRDT_Embeddings(content, doc_file):
     # create logoot/CRDT embeddings
     pos = 0
@@ -40,11 +41,13 @@ def create_CRDT_Embeddings(content, doc_file):
         for c in line:
             doc_file.insert(pos, c)
             pos += 1
-        
+
         doc_file.insert(pos, '\n')
         pos += 1
 
-create_CRDT_Embeddings( open(WORKDIR + 'hello', "r").readlines(), crdt_file['hello'] )
+
+create_CRDT_Embeddings(
+    open(WORKDIR + 'hello', "r").readlines(), crdt_file['hello'])
 
 
 @app.get("/")
@@ -71,8 +74,13 @@ async def create_file(filename):
     f = open("workdir/"+filename, "w")
     f.write("# Start Collaborating! ...")
     f.close()
-    print("create_file", response.json())
-    return response.json()
+
+    resp = response.json()
+    resp["content"] = ""
+    resp["key"] = filename
+
+    print("create_file", resp)
+    return resp
 
 
 @app.get('/open-file')
@@ -86,7 +94,7 @@ async def open_file(filename):
     resp = requests.get(
         f'http://{ip}:{port}/fetch-file?filename={filename}').json()
 
-    if ('content' in resp) and ('name' in resp) and (resp['name'] == filename):     
+    if ('content' in resp) and ('name' in resp) and (resp['name'] == filename):
         # File successfully opened
 
         crdt_file[filename].site = MY_USERID
@@ -100,6 +108,8 @@ async def open_file(filename):
             "port": MY_PORT
         }
         requests.post(FILE_TRACKER + '/opened/', data=params)
+
+        resp["status"] = "success"
         return resp
 
     else:
@@ -130,19 +140,22 @@ def fetch_file(filename):
     print("fetch_file", resp)
     return resp
 
+
 def move_cursor(filename, key):
     if key == 'ArrowRight':
         file_cursors[filename] = file_cursors[filename] + 1
     elif key == 'ArrowLeft':
         file_cursors[filename] = max(0, file_cursors[filename] - 1)
     elif key == 'ArrowUp':
-        pass # TODO
+        pass  # TODO
     elif key == 'ArrowDown':
-        pass # TODO
+        pass  # TODO
+
 
 def insert_char(filename, key):
     crdt_file[filename].insert(file_cursors[filename], key)
     file_cursors[filename] += 1
+
 
 def delete_char(filename):
     if file_cursors[filename] == 0:
@@ -151,6 +164,7 @@ def delete_char(filename):
 
     crdt_file[filename].delete(file_cursors[filename] - 1)
     file_cursors[filename] -= 1
+
 
 @app.get('/key-press')
 async def key_press(filename, key):
@@ -178,12 +192,12 @@ async def key_press(filename, key):
 #         "content": contents
 #     }
 #     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-    
+
 #     # update CRDT embedding
 #     cur_index = 0
 #     for i in range(line):
 #         cur_index += character_counter[filename][i]
-    
+
 #     cur_index += pos
 #     print(cur_index)
 
@@ -208,12 +222,12 @@ async def key_press(filename, key):
 #         "content": contents
 #     }
 #     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-    
+
 #     # update CRDT embedding
 #     cur_index = 0
 #     for i in range(line):
 #         cur_index += character_counter[filename][i]
-    
+
 #     cur_index += pos
 
 #     add_msg = crdt_file[filename].delete(cur_index)
@@ -222,7 +236,7 @@ async def key_press(filename, key):
 #     # send add_msg to rabbitMQ
 #     print(add_msg)
 #     print(crdt_file[filename].text)
-    
+
 #     return resp
 
 # @app.get('/add-line')
@@ -230,15 +244,14 @@ async def key_press(filename, key):
 #     line = int(line)
 #     contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
 #     contents = contents[:line] + [""] + contents[line:]
-    
+
 #     resp = {
 #         "name": str(filename),
 #         "content": contents
 #     }
 #     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-    
 
-    
+
 #     return resp
 
 # @app.get('/delete-line')
