@@ -20,10 +20,13 @@ app.add_middleware(
 )
 
 # must configure these
-FILE_TRACKER = 'http://localhost:8000'
+FILE_TRACKER = 'http://5c44-103-39-134-62.ngrok.io'
+RABBITMQ_HOST = 'localhost'
+
+MY_IP = 'c1a3-106-215-90-186.ngrok.io'  # set to private ip if collaborating over LAN
+MY_PORT = 80
+
 WORKDIR = 'workdir/'
-MY_IP = '127.0.0.1'  # set to private ip if collaborating over LAN
-MY_PORT = int(sys.argv[1])
 MY_USERID = 123
 ######################
 file_cursors = {
@@ -148,11 +151,12 @@ async def close_file(filename):
         "ip": MY_IP,
         "port": MY_PORT
     }
+    print("closing ...")
     response = requests.post(FILE_TRACKER + '/close/', data=params)
+    print("close_file", response.json())
 
     rabbitmq_listeners[filename].terminate()
-
-    print("close_file", response.json())
+    
     return response.json()
 
 
@@ -188,7 +192,7 @@ def receive_patch(filename, patch):
 def send_patch(filename, patch):
     # send this patch to rabbitmq
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host='localhost'))
+        pika.ConnectionParameters(host=RABBITMQ_HOST))
     channel = connection.channel()
     msg = {
         "filename": filename,
@@ -322,5 +326,5 @@ async def key_press(filename, key):
 # TODO: Get updates from RabbitMQ and make appropriate changes to the local file.
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host=MY_IP, port=MY_PORT,
+    uvicorn.run("main:app", host='0.0.0.0', port=int(sys.argv[1]),
                 reload=True, debug=True, workers=3)
