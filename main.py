@@ -82,6 +82,11 @@ async def create_file(filename):
     f.close()
     print("create_file", response.json())
 
+    # only do this once
+    crdt_file[filename] = Doc()
+    crdt_file[filename].site = MY_USERID
+    file_cursors[filename] = 0
+
     # spawn rabbitmq listener
     rabbitmq_listeners[filename] = Process(
         target=rabbitmq_listen, args=(filename, MY_PORT, ))
@@ -115,6 +120,7 @@ async def open_file(filename):
             target=rabbitmq_listen, args=(filename, MY_PORT, ))
         rabbitmq_listeners[filename].start()
 
+        crdt_file[filename] = Doc()
         crdt_file[filename].site = MY_USERID
 
         create_CRDT_Embeddings(resp['content'], crdt_file[filename])
@@ -201,7 +207,6 @@ def insert_char(filename, key):
     send_patch(filename, insert_patch)
 
 
-
 def delete_char(filename):
     if file_cursors[filename] == 0:
         # first index of file
@@ -212,7 +217,6 @@ def delete_char(filename):
     open(WORKDIR + str(filename), "w").write(crdt_file[filename].text)
 
     send_patch(filename, delete_patch)
-
 
 
 @app.get('/key-press')
