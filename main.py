@@ -87,7 +87,12 @@ async def create_file(filename):
         target=rabbitmq_listen, args=(filename, MY_PORT, ))
     rabbitmq_listeners[filename].start()
 
-    return response.json()
+    resp = response.json()
+    resp["content"] = ""
+    resp["key"] = filename
+
+    print("create_file", resp)
+    return resp
 
 
 @app.get('/open-file')
@@ -121,6 +126,8 @@ async def open_file(filename):
             "port": MY_PORT
         }
         requests.post(FILE_TRACKER + '/opened/', data=params)
+
+        resp["status"] = "success"
         return resp
 
     else:
@@ -194,6 +201,7 @@ def insert_char(filename, key):
     send_patch(filename, insert_patch)
 
 
+
 def delete_char(filename):
     if file_cursors[filename] == 0:
         # first index of file
@@ -204,6 +212,7 @@ def delete_char(filename):
     open(WORKDIR + str(filename), "w").write(crdt_file[filename].text)
 
     send_patch(filename, delete_patch)
+
 
 
 @app.get('/key-press')
