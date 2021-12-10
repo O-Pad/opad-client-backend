@@ -129,7 +129,7 @@ def open_file():
         
         # only do this once
         crdt = pickle.loads(codecs.decode(resp['crdt'].encode(), "base64"))
-        crdt_file[filename] = pickle.loads(resp['crdt'])
+        crdt_file[filename] = crdt
         crdt_file[filename].site = MY_USERID
         file_cursors[filename] = 0
 
@@ -145,8 +145,14 @@ def open_file():
         }
         requests.post(FILE_TRACKER + '/opened/', data=params)
 
-        resp["status"] = "success"
-        return resp
+        new_resp = {
+            "status": "success",
+            "content": crdt.text,
+            "filename": filename,
+            "cursor": file_cursors[filename]
+        }
+
+        return new_resp
 
     else:
         return {"status": "Failed to fetch file from the user specified by file tracker."}
