@@ -198,7 +198,7 @@ def move_cursor(filename, key):
 def receive_patch():
     patch = request.get_json()
     if patch['id'] == MY_USERID:
-        return
+        return 'success'
     crdt_file[patch['filename']].apply_patch((patch['patch']))
     return 'success'
 
