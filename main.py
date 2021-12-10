@@ -10,6 +10,8 @@ from multiprocessing import Process
 import pika
 import json
 from pydantic import BaseModel
+import pickle
+import codecs
 
 
 app = Flask(__name__)
@@ -26,11 +28,11 @@ app = Flask(__name__)
 FILE_TRACKER = 'http://localhost:8000'
 RABBITMQ_HOST = 'localhost'
 
-MY_IP = 'be90-122-161-48-178.ngrok.io'  # set to private ip if collaborating over LAN
+MY_IP = 'e8c5-106-215-90-186.ngrok.io'  # set to private ip if collaborating over LAN
 MY_PORT = 80
 
 WORKDIR = 'workdir/'
-MY_USERID = 18059
+MY_USERID = 18033
 ######################
 file_cursors = {
     'hello': 0,
@@ -61,7 +63,7 @@ def after_request(response):
     return response
 
 @app.route("/")
-async def root():
+def root():
     return {
         "message": "Backend is running ...",
         "IP": MY_IP,
@@ -74,7 +76,7 @@ async def root():
 
 
 @app.route('/create-file')
-async def create_file():
+def create_file():
     filename = request.args.get('filename')
     params = {
         "file_id": str(filename),
@@ -107,7 +109,7 @@ async def create_file():
 
 
 @app.route('/open-file')
-async def open_file():
+def open_file():
     filename = request.args.get('filename')
     response = requests.get(FILE_TRACKER + '/open/?file_id=' + str(filename))
     resp = response.json()
@@ -118,23 +120,22 @@ async def open_file():
     ip = resp['ip']
     port = resp['port']
     resp = requests.get(
-        f'http://{ip}:{port}/fetch-file?filename={filename}').json()
+        f'http://{ip}:{port}/fetch-crdt?filename={filename}').json()
 
-    if ('content' in resp) and ('name' in resp) and (resp['name'] == filename):
+    if ('crdt' in resp) and ('name' in resp) and (resp['name'] == filename):
         # File successfully opened
 
         print(resp)
         
         # only do this once
-        crdt_file[filename] = Doc()
+        crdt = pickle.loads(codecs.decode(resp['crdt'].encode(), "base64"))
+        crdt_file[filename] = pickle.loads(resp['crdt'])
         crdt_file[filename].site = MY_USERID
         file_cursors[filename] = 0
 
         rabbitmq_listeners[filename] = Process(
-            target=rabbitmq_listen, args=(filename, MY_PORT, ))
+            target=rabbitmq_listen, args=(filename, ))
         rabbitmq_listeners[filename].start()
-
-        create_CRDT_Embeddings(resp['content'], crdt_file[filename])
 
         params = {
             "file_id": str(filename),
@@ -152,7 +153,7 @@ async def open_file():
 
 
 @app.route('/close-file')
-async def close_file():
+def close_file():
     filename = request.args.get('filename')
     params = {
         "file_id": str(filename),
@@ -180,6 +181,21 @@ def fetch_file():
         "cursor": file_cursors[filename]
     }
     print("fetch_file", resp)
+    return resp
+
+
+@app.route('/fetch-crdt')  # send crdt
+def fetch_crdt():
+    filename = request.args.get('filename')
+
+    # contents = pickle.dumps(crdt_file[filename])
+    crdt = codecs.encode(pickle.dumps(crdt_file[filename]), "base64").decode()
+    
+    resp = {
+        "name": str(filename),
+        "crdt": crdt
+    }
+    print("fetch_crdt", resp)
     return resp
 
 
@@ -239,7 +255,7 @@ def delete_char(filename):
 
 
 @app.route('/key-press')
-async def key_press():
+def key_press():
     filename = request.args.get('filename')
     key = request.args.get('key')
     if key == 'ArrowRight' or key == 'ArrowLeft' or key == 'ArrowUp' or key == 'ArrowDown':
