@@ -36,13 +36,13 @@ WORKDIR = 'workdir/'
 MY_USERID = 18033
 ######################
 file_cursors = {
-    'hello': 0,
-    'file2': 0
+    # 'hello': 0,
+    # 'file2': 0
 }
 
 crdt_file = {
-    'hello': Doc(),
-    'file2': Doc()
+    # 'hello': Doc(),
+    # 'file2': Doc()
 }
 
 rabbitmq_listeners = {}
@@ -77,10 +77,19 @@ def root():
         "WorkDirPath": WORKDIR
     }
 
+@app.route('/get-file-list')
+def get_file_list():
+    return {
+            "open_files": list(crdt_file.keys()),
+        }
 
-@app.route('/create-file')
+@app.route('/create-file', methods=['POST'])
 def create_file():
     filename = request.args.get('filename')
+    content = request.get_data().decode('utf-8')
+    print(filename)
+    print(content)
+
     params = {
         "file_id": str(filename),
         "user_id": MY_USERID,
@@ -95,6 +104,8 @@ def create_file():
 
     # only do this once
     crdt_file[filename] = Doc()
+    if(content):
+        create_CRDT_Embeddings(content, crdt_file[filename])
     crdt_file[filename].site = MY_USERID
     file_cursors[filename] = 0
 
@@ -174,6 +185,9 @@ def close_file():
     response = requests.post(FILE_TRACKER + '/close/', data=params)
     print("close_file", response.json())
 
+    file_cursors.pop(filename)
+    crdt_file.pop(filename)
+
     rabbitmq_listeners[filename].terminate()
 
     return response.json()
@@ -252,6 +266,7 @@ def move_cursor(filename, key):
 
         file_cursors[filename] = next_newLine + \
             (file_cursors[filename] - prev_newLine)
+        file_cursors[filename] = min(len(crdt_file[filename].text), file_cursors[filename] + 1)
 
 
 @app.route('/patch-from-rabbitmq', methods=['POST'])
