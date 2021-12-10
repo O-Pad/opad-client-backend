@@ -2,7 +2,10 @@
 
 ### Setup/Run
 
-1. pip install fastapi
-2. pip install "uvicorn[standard]"
-3. python main.py PORT (e.g. python main.py 4000)
-4. Backend should be reachable at http://127.0.0.1:PORT (e.g. http://127.0.0.1:4000)
+1. pip install Flask
+2. pip install pika
+3. pip install sortedcontainers
+4. git clone https://github.com/0ip/mahitahi.git
+5. Configure MY_IP and MY_USERID inside main.py.
+6. python3 main.py
+7. Backend should be reachable at http://127.0.0.1:4000
