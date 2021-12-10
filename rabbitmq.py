@@ -12,10 +12,7 @@ def rabbitmq_listen(exchange):
         # get/post opad - backend with parameter body
         print(" [x] %r" % body)
         msg = json.loads(body)
-        print(msg)
-        filename = msg["filename"]
-        patch = json.dumps(msg["patch"])
-        requests.get(BACKEND_URL + f"patch-from-rabbitmq?filename={filename}&patch={patch}")
+        requests.post(BACKEND_URL + f"patch-from-rabbitmq", msg)
 
     print("listening on exchange: %s" % exchange)
     connection = pika.BlockingConnection(

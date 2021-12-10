@@ -1,4 +1,5 @@
 import requests
+from requests.api import request
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -179,10 +180,12 @@ def move_cursor(filename, key):
         pass  # TODO
 
 
-@app.get('/patch-from-rabbitmq')
-def receive_patch(filename, patch):
-    print(filename, patch)
-    crdt_file[filename].apply_patch(json.loads(patch))
+@app.post('/patch-from-rabbitmq')
+def receive_patch():
+    patch = request.json()
+    if patch['id'] == MY_USERID:
+        return
+    crdt_file[patch['filename']].apply_patch(patch['patch'])
 
 
 def send_patch(filename, patch):
@@ -192,7 +195,8 @@ def send_patch(filename, patch):
     channel = connection.channel()
     msg = {
         "filename": filename,
-        "patch": patch
+        "patch": patch,
+        "id": MY_USERID,
     }
     print(msg)
     channel.basic_publish(
