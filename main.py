@@ -1,7 +1,7 @@
 import requests
-from requests.api import request
+from flask import request
 import uvicorn
-from fastapi import FastAPI
+from flask import Flask
 from fastapi.middleware.cors import CORSMiddleware
 from mahitahi.mahitahi import Doc
 import sys
@@ -12,20 +12,15 @@ import json
 from pydantic import BaseModel
 
 
-class Patch(BaseModel):
-    filename: str
-    patch: dict
-    id: int
+app = Flask(__name__)
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 # must configure these
 FILE_TRACKER = 'http://localhost:8000'
@@ -57,8 +52,15 @@ def create_CRDT_Embeddings(content, doc_file):
         doc_file.insert(pos, c)
         pos += 1
 
+@app.after_request
+def after_request(response):
+    header = response.headers
+    header['Access-Control-Allow-Origin'] = '*'
+    header['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    header['Access-Control-Allow-Methods'] = 'OPTIONS, HEAD, GET, POST, DELETE, PUT'
+    return response
 
-@app.get("/")
+@app.route("/")
 async def root():
     return {
         "message": "Backend is running ...",
@@ -71,8 +73,9 @@ async def root():
     }
 
 
-@app.get('/create-file')
-async def create_file(filename):
+@app.route('/create-file')
+async def create_file():
+    filename = request.args.get('filename')
     params = {
         "file_id": str(filename),
         "user_id": MY_USERID,
@@ -103,8 +106,9 @@ async def create_file(filename):
     return resp
 
 
-@app.get('/open-file')
-async def open_file(filename):
+@app.route('/open-file')
+async def open_file():
+    filename = request.args.get('filename')
     response = requests.get(FILE_TRACKER + '/open/?file_id=' + str(filename))
     resp = response.json()
     print("open_file", resp)
@@ -147,8 +151,9 @@ async def open_file(filename):
         return {"status": "Failed to fetch file from the user specified by file tracker."}
 
 
-@app.get('/close-file')
-async def close_file(filename):
+@app.route('/close-file')
+async def close_file():
+    filename = request.args.get('filename')
     params = {
         "file_id": str(filename),
         "user_id": MY_USERID,
@@ -164,8 +169,10 @@ async def close_file(filename):
     return response.json()
 
 
-@app.get('/fetch-file')  # reload file from disk/mem
-def fetch_file(filename):
+@app.route('/fetch-file')  # reload file from disk/mem
+def fetch_file():
+    filename = request.args.get('filename')
+
     contents = crdt_file[filename].text
     resp = {
         "name": str(filename),
@@ -188,11 +195,12 @@ def move_cursor(filename, key):
 
 
 @app.post('/patch-from-rabbitmq')
-def receive_patch(patch: Patch):
-    patch = request.json()
+def receive_patch():
+    patch = request.get_json()
     if patch['id'] == MY_USERID:
         return
-    crdt_file[patch['filename']].apply_patch(patch['patch'])
+    crdt_file[patch['filename']].apply_patch((patch['patch']))
+    return 'success'
 
 
 def send_patch(filename, patch):
@@ -230,8 +238,10 @@ def delete_char(filename):
     send_patch(filename, delete_patch)
 
 
-@app.get('/key-press')
-async def key_press(filename, key):
+@app.route('/key-press')
+async def key_press():
+    filename = request.args.get('filename')
+    key = request.args.get('key')
     if key == 'ArrowRight' or key == 'ArrowLeft' or key == 'ArrowUp' or key == 'ArrowDown':
         move_cursor(filename, key)
     elif key == 'Enter':
@@ -242,96 +252,9 @@ async def key_press(filename, key):
         insert_char(filename, key)
     elif key == 'Backspace':
         delete_char(filename)
-    return fetch_file(filename)
-
-# @app.get('/add-char')
-# async def add_char(filename, line, pos, key):
-#     line = int(line)
-#     pos = int(pos)
-#     contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
-#     ln = contents[line]
-#     contents[line] = ln[:pos] + key + ln[pos:]
-#     resp = {
-#         "name": str(filename),
-#         "content": contents
-#     }
-#     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-
-#     # update CRDT embedding
-#     cur_index = 0
-#     for i in range(line):
-#         cur_index += character_counter[filename][i]
-
-#     cur_index += pos
-#     print(cur_index)
-
-#     add_msg = crdt_file[filename].insert(cur_index, key)
-#     character_counter[filename][line] += 1
-
-#     # send add_msg to rabbitMQ
-#     print(add_msg)
-#     print(crdt_file[filename].text)
-
-#     return resp
-
-# @app.get('/delete-char')
-# async def delete_char(filename, line, pos):
-#     line = int(line)
-#     pos = int(pos)
-#     contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
-#     ln = contents[line]
-#     contents[line] = ln[:pos] + ln[pos + 1:]
-#     resp = {
-#         "name": str(filename),
-#         "content": contents
-#     }
-#     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-
-#     # update CRDT embedding
-#     cur_index = 0
-#     for i in range(line):
-#         cur_index += character_counter[filename][i]
-
-#     cur_index += pos
-
-#     add_msg = crdt_file[filename].delete(cur_index)
-#     character_counter[filename][line] -= 1
-
-#     # send add_msg to rabbitMQ
-#     print(add_msg)
-#     print(crdt_file[filename].text)
-
-#     return resp
-
-# @app.get('/add-line')
-# async def add_line(filename, line):
-#     line = int(line)
-#     contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
-#     contents = contents[:line] + [""] + contents[line:]
-
-#     resp = {
-#         "name": str(filename),
-#         "content": contents
-#     }
-#     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-
-
-#     return resp
-
-# @app.get('/delete-line')
-# async def delete_line(filename, line):
-#     line = int(line)
-#     contents = list(map(lambda line: line[:-1] if line[-1] == '\n' else line, open(WORKDIR + str(filename), "r").readlines()))
-#     contents = contents[:line] + contents[line+1:]
-#     resp = {
-#         "name": str(filename),
-#         "content": contents
-#     }
-#     open(WORKDIR + str(filename), "w").writelines(list(map(lambda line: line + '\n', contents)))
-#     return resp
-
-# TODO: Get updates from RabbitMQ and make appropriate changes to the local file.
+    return fetch_file()
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", port=int(sys.argv[1]),
-                reload=True, debug=True, workers=3)
+    # uvicorn.run("main:app", port=int(sys.argv[1]),
+    #             reload=True, debug=True, workers=3)
+    app.run(debug=True, port='4000')

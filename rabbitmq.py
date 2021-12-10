@@ -12,7 +12,9 @@ def rabbitmq_listen(exchange):
         # get/post opad - backend with parameter body
         print(" [x] %r" % body)
         msg = json.loads(body)
-        requests.post(BACKEND_URL + f"patch-from-rabbitmq", msg)
+        msg['patch'] = str(msg['patch'])
+        print(msg)
+        requests.post(BACKEND_URL + "patch-from-rabbitmq", json=msg)
 
     print("listening on exchange: %s" % exchange)
     connection = pika.BlockingConnection(
