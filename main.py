@@ -20,10 +20,10 @@ app.add_middleware(
 )
 
 # must configure these
-FILE_TRACKER = 'http://5c44-103-39-134-62.ngrok.io'
+FILE_TRACKER = 'http://localhost:8000'
 RABBITMQ_HOST = 'localhost'
 
-MY_IP = 'c1a3-106-215-90-186.ngrok.io'  # set to private ip if collaborating over LAN
+MY_IP = 'e8c5-106-215-90-186.ngrok.io'  # set to private ip if collaborating over LAN
 MY_PORT = 80
 
 WORKDIR = 'workdir/'
@@ -67,6 +67,7 @@ async def root():
         "Port": MY_PORT,
         "UserID": MY_USERID,
         "FileTrackerPath": FILE_TRACKER,
+        "RabbitMQ Host": RABBITMQ_HOST,
         "WorkDirPath": WORKDIR
     }
 
