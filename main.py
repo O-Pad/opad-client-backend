@@ -9,6 +9,13 @@ from rabbitmq import rabbitmq_listen
 from multiprocessing import Process
 import pika
 import json
+from pydantic import BaseModel
+
+
+class Patch(BaseModel):
+    filename: str
+    patch: dict
+    id: int
 
 app = FastAPI()
 
@@ -28,7 +35,7 @@ MY_IP = 'be90-122-161-48-178.ngrok.io'  # set to private ip if collaborating ove
 MY_PORT = 80
 
 WORKDIR = 'workdir/'
-MY_USERID = 123
+MY_USERID = 18059
 ######################
 file_cursors = {
     'hello': 0,
@@ -181,7 +188,7 @@ def move_cursor(filename, key):
 
 
 @app.post('/patch-from-rabbitmq')
-def receive_patch():
+def receive_patch(patch: Patch):
     patch = request.json()
     if patch['id'] == MY_USERID:
         return
