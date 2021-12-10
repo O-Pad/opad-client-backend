@@ -119,13 +119,14 @@ async def open_file(filename):
 
     if ('content' in resp) and ('name' in resp) and (resp['name'] == filename):
         # File successfully opened
+        # only do this once
+        crdt_file[filename] = Doc()
+        crdt_file[filename].site = MY_USERID
+        file_cursors[filename] = 0
 
         rabbitmq_listeners[filename] = Process(
             target=rabbitmq_listen, args=(filename, MY_PORT, ))
         rabbitmq_listeners[filename].start()
-
-        crdt_file[filename] = Doc()
-        crdt_file[filename].site = MY_USERID
 
         create_CRDT_Embeddings(resp['content'], crdt_file[filename])
 
