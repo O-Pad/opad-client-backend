@@ -210,7 +210,7 @@ def move_cursor(filename, key):
         pass  # TODO
 
 
-@app.post('/patch-from-rabbitmq')
+@app.route('/patch-from-rabbitmq', methods=['POST'])
 def receive_patch():
     patch = request.get_json()
     if patch['id'] == MY_USERID:
