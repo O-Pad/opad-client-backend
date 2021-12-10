@@ -45,18 +45,9 @@ rabbitmq_listeners = {}
 def create_CRDT_Embeddings(content, doc_file):
     # create logoot/CRDT embeddings
     pos = 0
-    for line in content:
-        # add embedding
-        for c in line:
-            doc_file.insert(pos, c)
-            pos += 1
-
-        doc_file.insert(pos, '\n')
+    for c in content:
+        doc_file.insert(pos, c)
         pos += 1
-
-
-create_CRDT_Embeddings(
-    open(WORKDIR + 'hello', "r").readlines(), crdt_file['hello'])
 
 
 @app.get("/")
@@ -119,6 +110,9 @@ async def open_file(filename):
 
     if ('content' in resp) and ('name' in resp) and (resp['name'] == filename):
         # File successfully opened
+
+        print(resp)
+        
         # only do this once
         crdt_file[filename] = Doc()
         crdt_file[filename].site = MY_USERID
@@ -328,5 +322,5 @@ async def key_press(filename, key):
 # TODO: Get updates from RabbitMQ and make appropriate changes to the local file.
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host='0.0.0.0', port=int(sys.argv[1]),
+    uvicorn.run("main:app", port=int(sys.argv[1]),
                 reload=True, debug=True, workers=3)
