@@ -5,10 +5,10 @@ import requests
 import json
 
 
-def rabbitmq_listen(exchange, PORT):
+def rabbitmq_listen(exchange):
 
     def callback(ch, method, properties, body):
-        BACKEND_URL = "http://localhost:" + str(PORT) + "/"
+        BACKEND_URL = "http://localhost:4000/"
         # get/post opad - backend with parameter body
         print(" [x] %r" % body)
         msg = json.loads(body)

@@ -23,7 +23,7 @@ app.add_middleware(
 FILE_TRACKER = 'http://localhost:8000'
 RABBITMQ_HOST = 'localhost'
 
-MY_IP = 'e8c5-106-215-90-186.ngrok.io'  # set to private ip if collaborating over LAN
+MY_IP = 'be90-122-161-48-178.ngrok.io'  # set to private ip if collaborating over LAN
 MY_PORT = 80
 
 WORKDIR = 'workdir/'
@@ -84,7 +84,7 @@ async def create_file(filename):
 
     # spawn rabbitmq listener
     rabbitmq_listeners[filename] = Process(
-        target=rabbitmq_listen, args=(filename, MY_PORT, ))
+        target=rabbitmq_listen, args=(filename, ))
     rabbitmq_listeners[filename].start()
 
     resp = response.json()
@@ -182,7 +182,7 @@ def move_cursor(filename, key):
 @app.get('/patch-from-rabbitmq')
 def receive_patch(filename, patch):
     print(filename, patch)
-    crdt_file[filename].apply_patch(str(patch))
+    crdt_file[filename].apply_patch(json.loads(patch))
 
 
 def send_patch(filename, patch):
