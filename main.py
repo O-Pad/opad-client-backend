@@ -28,7 +28,8 @@ app = Flask(__name__)
 FILE_TRACKER = 'http://localhost:8000'
 RABBITMQ_HOST = 'localhost'
 
-MY_IP = 'e8c5-106-215-90-186.ngrok.io'  # set to private ip if collaborating over LAN
+# set to private ip if collaborating over LAN
+MY_IP = 'e8c5-106-215-90-186.ngrok.io'
 MY_PORT = 80
 
 WORKDIR = 'workdir/'
@@ -54,6 +55,7 @@ def create_CRDT_Embeddings(content, doc_file):
         doc_file.insert(pos, c)
         pos += 1
 
+
 @app.after_request
 def after_request(response):
     header = response.headers
@@ -61,6 +63,7 @@ def after_request(response):
     header['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     header['Access-Control-Allow-Methods'] = 'OPTIONS, HEAD, GET, POST, DELETE, PUT'
     return response
+
 
 @app.route("/")
 def root():
@@ -126,7 +129,7 @@ def open_file():
         # File successfully opened
 
         print(resp)
-        
+
         # only do this once
         crdt = pickle.loads(codecs.decode(resp['crdt'].encode(), "base64"))
         crdt_file[filename] = crdt
@@ -172,7 +175,7 @@ def close_file():
     print("close_file", response.json())
 
     rabbitmq_listeners[filename].terminate()
-    
+
     return response.json()
 
 
@@ -196,7 +199,7 @@ def fetch_crdt():
 
     # contents = pickle.dumps(crdt_file[filename])
     crdt = codecs.encode(pickle.dumps(crdt_file[filename]), "base64").decode()
-    
+
     resp = {
         "name": str(filename),
         "crdt": crdt
@@ -207,13 +210,48 @@ def fetch_crdt():
 
 def move_cursor(filename, key):
     if key == 'ArrowRight':
-        file_cursors[filename] = file_cursors[filename] + 1
+        file_cursors[filename] = min(
+            len(crdt_file[filename].text), file_cursors[filename] + 1)
     elif key == 'ArrowLeft':
         file_cursors[filename] = max(0, file_cursors[filename] - 1)
     elif key == 'ArrowUp':
-        pass  # TODO
+        # previous line break
+        prev_newLine = crdt_file[filename].text[::-1].find(
+            '\n', len(crdt_file[filename].text) - file_cursors[filename])
+        if prev_newLine < 0:
+            return
+        else:
+            prev_newLine = len(crdt_file[filename].text) - prev_newLine - 1
+
+        # previous previous line break
+        prev_prev_newLine = crdt_file[filename].text[::-1].find(
+            '\n', len(crdt_file[filename].text) - prev_newLine)
+        if prev_prev_newLine < 0:
+            prev_prev_newLine = -1
+        else:
+            prev_prev_newLine = len(
+                crdt_file[filename].text) - prev_prev_newLine - 1
+
+        file_cursors[filename] = prev_prev_newLine + \
+            (file_cursors[filename] - prev_newLine)
+
     elif key == 'ArrowDown':
-        pass  # TODO
+        # next line break
+        next_newLine = crdt_file[filename].text.find(
+            '\n', file_cursors[filename])
+        if next_newLine < 0:
+            return
+
+        # previous line break
+        prev_newLine = crdt_file[filename].text[::-1].find(
+            '\n', len(crdt_file[filename].text) - file_cursors[filename])
+        if prev_newLine < 0:
+            prev_newLine = -1
+        else:
+            prev_newLine = len(crdt_file[filename].text) - prev_newLine - 1
+
+        file_cursors[filename] = next_newLine + \
+            (file_cursors[filename] - prev_newLine)
 
 
 @app.route('/patch-from-rabbitmq', methods=['POST'])
@@ -275,6 +313,7 @@ def key_press():
     elif key == 'Backspace':
         delete_char(filename)
     return fetch_file()
+
 
 if __name__ == "__main__":
     # uvicorn.run("main:app", port=int(sys.argv[1]),
