@@ -131,7 +131,7 @@ async def open_file():
         file_cursors[filename] = 0
 
         rabbitmq_listeners[filename] = Process(
-            target=rabbitmq_listen, args=(filename, MY_PORT, ))
+            target=rabbitmq_listen, args=(filename, ))
         rabbitmq_listeners[filename].start()
 
         create_CRDT_Embeddings(resp['content'], crdt_file[filename])
@@ -194,7 +194,7 @@ def move_cursor(filename, key):
         pass  # TODO
 
 
-@app.post('/patch-from-rabbitmq')
+@app.route('/patch-from-rabbitmq', ['POST'])
 def receive_patch():
     patch = request.get_json()
     if patch['id'] == MY_USERID:
