@@ -262,11 +262,6 @@ def fetch_crdt():
         response = requests.post(FILE_TRACKER + '/close/', data=params)
         print("close_file", response.json())
 
-        file_cursors.pop(filename)
-        crdt_file.pop(filename)
-
-        rabbitmq_listeners[filename].terminate()
-
         return {"status": "Sorry, I do not have the file :("}
 
 
