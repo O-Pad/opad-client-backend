@@ -29,11 +29,11 @@ FILE_TRACKER = 'http://localhost:8000'
 RABBITMQ_HOST = 'localhost'
 
 # set to private ip if collaborating over LAN
-MY_IP = 'e8c5-106-215-90-186.ngrok.io'
-MY_PORT = 80
+MY_IP = '192.168.52.33'
+MY_PORT = 4000
 
 WORKDIR = 'workdir/'
-MY_USERID = 18033
+MY_USERID = 18276
 ######################
 file_cursors = {
     # 'hello': 0,
@@ -77,11 +77,13 @@ def root():
         "WorkDirPath": WORKDIR
     }
 
+
 @app.route('/get-file-list')
 def get_file_list():
     return {
-            "open_files": list(crdt_file.keys()),
-        }
+        "open_files": list(crdt_file.keys()),
+    }
+
 
 @app.route('/create-file', methods=['POST'])
 def create_file():
@@ -266,7 +268,8 @@ def move_cursor(filename, key):
 
         file_cursors[filename] = next_newLine + \
             (file_cursors[filename] - prev_newLine)
-        file_cursors[filename] = min(len(crdt_file[filename].text), file_cursors[filename] + 1)
+        file_cursors[filename] = min(
+            len(crdt_file[filename].text), file_cursors[filename])
 
 
 @app.route('/patch-from-rabbitmq', methods=['POST'])
@@ -274,7 +277,28 @@ def receive_patch():
     patch = request.get_json()
     if patch['id'] == MY_USERID:
         return 'success'
+
+    orig_file = crdt_file[patch['filename']].text
     crdt_file[patch['filename']].apply_patch((patch['patch']))
+    new_file = crdt_file[patch['filename']].text
+
+    if patch['op'] == 'i':
+        pos = 0
+        while pos < len(orig_file):
+            if orig_file[pos] != new_file[pos]:
+                break
+        if pos < len(orig_file) and pos < file_cursors[patch['filename']]:
+            file_cursors[patch['filename']] += 1
+
+    else:
+        pos = 0
+        while pos < len(orig_file):
+            if orig_file[pos] != new_file[pos]:
+                break
+        if pos < len(orig_file) and pos < file_cursors[patch['filename']]:
+            file_cursors[patch['filename']] -= 1
+
+    print(patch['patch'])
     return 'success'
 
 
@@ -333,4 +357,4 @@ def key_press():
 if __name__ == "__main__":
     # uvicorn.run("main:app", port=int(sys.argv[1]),
     #             reload=True, debug=True, workers=3)
-    app.run(debug=True, port='4000')
+    app.run(debug=True, host='0.0.0.0', port='4000')
