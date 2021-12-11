@@ -330,6 +330,7 @@ def send_patch(filename, patch):
     print(msg)
     channel.basic_publish(
         exchange=filename, routing_key='', body=json.dumps(msg))
+    channel.close()
 
 
 def insert_char(filename, key):
