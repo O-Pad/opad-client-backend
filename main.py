@@ -12,6 +12,9 @@ import json
 from pydantic import BaseModel
 import pickle
 import codecs
+from dotenv import load_dotenv
+import os
+load_dotenv(dotenv_path=".env")
 
 
 app = Flask(__name__)
@@ -25,15 +28,15 @@ app = Flask(__name__)
 # )
 
 # must configure these
-FILE_TRACKER = 'http://localhost:8000'
-RABBITMQ_HOST = 'localhost'
+FILE_TRACKER = f'http://{os.getenv("FILE_TRACKER_IP")}'
+RABBITMQ_HOST = os.getenv('RABBITMQ_HOST')
 
 # set to private ip if collaborating over LAN
-MY_IP = '192.168.52.33'
-MY_PORT = 4000
+MY_IP = os.getenv('MY_IP')
+MY_PORT = os.getenv('MY_PORT')
 
 WORKDIR = 'workdir/'
-MY_USERID = 18276
+MY_USERID = os.getenv('MY_USERID')
 ######################
 file_cursors = {
     # 'hello': 0,
