@@ -216,7 +216,8 @@ def fetch_file():
     resp = {
         "name": str(filename),
         "content": contents,
-        "cursor": file_cursors[filename]
+        "cursor": file_cursors[filename],
+        "clock": crdt_file[filename]._clock
     }
     print("fetch_file", resp)
     return resp
