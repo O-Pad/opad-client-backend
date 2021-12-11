@@ -30,7 +30,7 @@ app = Flask(__name__)
 # must configure these
 FILE_TRACKER = f'http://{os.getenv("FILE_TRACKER_IP")}'
 RABBITMQ_HOST = os.getenv('RABBITMQ_HOST')
-
+RABBITMQ_PORT = os.getenv('RABBITMQ_PORT')
 # set to private ip if collaborating over LAN
 MY_IP = os.getenv('MY_IP')
 MY_PORT = os.getenv('MY_PORT')
@@ -319,7 +319,7 @@ def receive_patch():
 def send_patch(filename, patch):
     # send this patch to rabbitmq
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
+        pika.ConnectionParameters(host=RABBITMQ_HOST,port=RABBITMQ_PORT))
     channel = connection.channel()
     msg = {
         "filename": filename,
