@@ -90,9 +90,15 @@ def get_file_list():
 
 @app.route('/alive')
 def alive():
-    return {
-        "status": "alive"
-    }
+    filename = request.args.get('filename')
+    if filename in crdt_file.keys():
+        return {
+            "status": "open"
+        }
+    else:
+        return {
+            "status": "closed"
+        }
 
 
 @app.route('/create-file', methods=['POST'])
@@ -235,14 +241,33 @@ def fetch_crdt():
     filename = request.args.get('filename')
 
     # contents = pickle.dumps(crdt_file[filename])
-    crdt = codecs.encode(pickle.dumps(crdt_file[filename]), "base64").decode()
+    if filename in crdt_file:
+        crdt = codecs.encode(pickle.dumps(crdt_file[filename]), "base64").decode()
 
-    resp = {
-        "name": str(filename),
-        "crdt": crdt
-    }
-    print("fetch_crdt", resp)
-    return resp
+        resp = {
+            "name": str(filename),
+            "crdt": crdt
+        }
+        print("fetch_crdt", resp)
+        return resp
+
+    else:
+        params = {
+            "file_id": str(filename),
+            "user_id": MY_USERID,
+            "ip": MY_IP,
+            "port": MY_PORT
+        }
+        print("closing ...")
+        response = requests.post(FILE_TRACKER + '/close/', data=params)
+        print("close_file", response.json())
+
+        file_cursors.pop(filename)
+        crdt_file.pop(filename)
+
+        rabbitmq_listeners[filename].terminate()
+
+        return {"status": "Sorry, I do not have the file :("}
 
 
 def move_cursor(filename, key):
