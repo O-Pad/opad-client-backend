@@ -70,6 +70,9 @@ def after_request(response):
 
 @app.route("/")
 def root():
+    """
+    test endpoint
+    """
     return {
         "message": "Backend is running ...",
         "IP": MY_IP,
@@ -83,6 +86,9 @@ def root():
 
 @app.route('/get-file-list')
 def get_file_list():
+    """
+    obtain list of open files.
+    """
     return {
         "open_files": list(crdt_file.keys()),
     }
@@ -90,6 +96,9 @@ def get_file_list():
 
 @app.route('/alive')
 def alive():
+    """
+    keep alive message for polling by file tracker.
+    """
     filename = request.args.get('filename')
     if filename in crdt_file.keys():
         return {
@@ -103,6 +112,9 @@ def alive():
 
 @app.route('/create-file', methods=['POST'])
 def create_file():
+    """
+    endpoint for creating a file
+    """
     filename = request.args.get('filename')
     content = request.get_data().decode('utf-8')
     print(filename)
@@ -142,6 +154,9 @@ def create_file():
 
 @app.route('/open-file')
 def open_file():
+    """
+    endpoint for opening an existing file
+    """
     filename = request.args.get('filename')
     response = requests.get(FILE_TRACKER + '/open/?file_id=' + str(filename))
     resp = response.json()
@@ -202,6 +217,9 @@ def open_file():
 
 @app.route('/close-file')
 def close_file():
+    """
+    endpoint for closing a file
+    """
     filename = request.args.get('filename')
     params = {
         "file_id": str(filename),
@@ -223,6 +241,9 @@ def close_file():
 
 @app.route('/fetch-file')  # reload file from disk/mem
 def fetch_file():
+    """
+    endpoint for frontend to fetch current file contents in plain text
+    """
     filename = request.args.get('filename')
 
     contents = crdt_file[filename].text
@@ -238,6 +259,9 @@ def fetch_file():
 
 @app.route('/fetch-crdt')  # send crdt
 def fetch_crdt():
+    """
+    endpoint for delivering crdt object to new collaborators
+    """
     filename = request.args.get('filename')
 
     # contents = pickle.dumps(crdt_file[filename])
@@ -266,6 +290,9 @@ def fetch_crdt():
 
 
 def move_cursor(filename, key):
+    """
+    endpoint for cursor computations
+    """
     if key == 'ArrowRight':
         file_cursors[filename] = min(
             len(crdt_file[filename].text), file_cursors[filename] + 1)
@@ -315,6 +342,9 @@ def move_cursor(filename, key):
 
 @app.route('/patch-from-rabbitmq', methods=['POST'])
 def receive_patch():
+    """
+    receiving message from rabbitmq and apply_patch
+    """
     patch = request.get_json()
     if patch['id'] == MY_USERID:
         return 'success'
@@ -345,6 +375,9 @@ def receive_patch():
 
 
 def send_patch(filename, patch):
+    """
+    sending message to rabbitmq along with patch
+    """
     # send this patch to rabbitmq
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=RABBITMQ_HOST,port=RABBITMQ_PORT))
@@ -361,6 +394,9 @@ def send_patch(filename, patch):
 
 
 def insert_char(filename, key):
+    """
+    insert character
+    """
     insert_patch = crdt_file[filename].insert(file_cursors[filename], key)
     file_cursors[filename] += 1
     open(WORKDIR + str(filename), "w").write(crdt_file[filename].text)
@@ -369,6 +405,9 @@ def insert_char(filename, key):
 
 
 def delete_char(filename):
+    """
+    delete character
+    """
     if file_cursors[filename] == 0:
         # first index of file
         return
@@ -382,6 +421,9 @@ def delete_char(filename):
 
 @app.route('/key-press')
 def key_press():
+    """
+    handling key press events
+    """
     filename = request.args.get('filename')
     key = request.args.get('key')
     if key == 'ArrowRight' or key == 'ArrowLeft' or key == 'ArrowUp' or key == 'ArrowDown':
