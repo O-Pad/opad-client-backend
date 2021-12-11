@@ -12,6 +12,9 @@ import json
 from pydantic import BaseModel
 import pickle
 import codecs
+from dotenv import load_dotenv
+import os
+load_dotenv(dotenv_path=".env")
 
 
 app = Flask(__name__)
@@ -25,15 +28,15 @@ app = Flask(__name__)
 # )
 
 # must configure these
-FILE_TRACKER = 'http://localhost:8000'
-RABBITMQ_HOST = 'localhost'
+FILE_TRACKER = f'http://{os.getenv("FILE_TRACKER_IP")}'
+RABBITMQ_HOST = os.getenv('RABBITMQ_HOST')
 
 # set to private ip if collaborating over LAN
-MY_IP = '192.168.52.33'
-MY_PORT = 4000
+MY_IP = os.getenv('MY_IP')
+MY_PORT = os.getenv('MY_PORT')
 
 WORKDIR = 'workdir/'
-MY_USERID = 18276
+MY_USERID = os.getenv('MY_USERID')
 ######################
 file_cursors = {
     # 'hello': 0,
@@ -131,12 +134,22 @@ def open_file():
     resp = response.json()
     print("open_file", resp)
 
-    # make sure actually opened
+    # if no user under file tracker having the file
+    if 'ip' in resp:
+        pass
+    else:
+        return {"status": "File doesn't exist or no user to serve the file."}
 
     ip = resp['ip']
     port = resp['port']
-    resp = requests.get(
-        f'http://{ip}:{port}/fetch-crdt?filename={filename}').json()
+    
+    # if found such user, attempt requesting the file
+    try: 
+        resp = requests.get(
+        f'http://{ip}:{port}/fetch-crdt?filename={filename}', timeout=2).json()
+    except requests.exceptions.Timeout as e: 
+        print(e)
+        return {"status": "Failed to fetch file from the user specified by file tracker."}
 
     if ('crdt' in resp) and ('name' in resp) and (resp['name'] == filename):
         # File successfully opened
