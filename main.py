@@ -282,11 +282,12 @@ def receive_patch():
     crdt_file[patch['filename']].apply_patch((patch['patch']))
     new_file = crdt_file[patch['filename']].text
 
-    if patch['op'] == 'i':
+    if json.loads(patch['patch'])['op'] == "i":
         pos = 0
         while pos < len(orig_file):
             if orig_file[pos] != new_file[pos]:
                 break
+            pos += 1
         if pos < len(orig_file) and pos < file_cursors[patch['filename']]:
             file_cursors[patch['filename']] += 1
 
@@ -295,10 +296,10 @@ def receive_patch():
         while pos < len(orig_file):
             if orig_file[pos] != new_file[pos]:
                 break
+            pos += 1
         if pos < len(orig_file) and pos < file_cursors[patch['filename']]:
             file_cursors[patch['filename']] -= 1
 
-    print(patch['patch'])
     return 'success'
 
 
