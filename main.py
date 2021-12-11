@@ -88,6 +88,13 @@ def get_file_list():
     }
 
 
+@app.route('/alive')
+def alive():
+    return {
+        "status": "alive"
+    }
+
+
 @app.route('/create-file', methods=['POST'])
 def create_file():
     filename = request.args.get('filename')
