@@ -131,12 +131,22 @@ def open_file():
     resp = response.json()
     print("open_file", resp)
 
-    # make sure actually opened
+    # if no user under file tracker having the file
+    if 'ip' in resp:
+        pass
+    else:
+        return {"status": "File doesn't exist or no user to serve the file."}
 
     ip = resp['ip']
     port = resp['port']
-    resp = requests.get(
-        f'http://{ip}:{port}/fetch-crdt?filename={filename}').json()
+    
+    # if found such user, attempt requesting the file
+    try: 
+        resp = requests.get(
+        f'http://{ip}:{port}/fetch-crdt?filename={filename}', timeout=2).json()
+    except requests.exceptions.Timeout as e: 
+        print(e)
+        return {"status": "Failed to fetch file from the user specified by file tracker."}
 
     if ('crdt' in resp) and ('name' in resp) and (resp['name'] == filename):
         # File successfully opened
