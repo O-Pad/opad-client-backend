@@ -1,10 +1,8 @@
 import requests
 from flask import request
-import uvicorn
 from flask import Flask
 from fastapi.middleware.cors import CORSMiddleware
 from mahitahi.mahitahi import Doc
-import sys
 from rabbitmq import rabbitmq_listen
 from multiprocessing import Process
 import pika

@@ -2,9 +2,7 @@
 
 ### Setup/Run
 
-1. pip install Flask
-2. pip install pika
-3. pip install sortedcontainers
+1. pip install -r requirements.txt
 4. git clone https://github.com/0ip/mahitahi.git
 5. Configure .env.sample file.
 6. python3 main.py
